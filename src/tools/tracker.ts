@@ -105,20 +105,23 @@ export function registerTrackerTools(
     }
   );
 
+  // Explicit z.object().shape to ensure stable schema serialization for MCP
+  const createTimeEntryShape = z.object({
+    entry_date: z.string().describe("Datum (YYYY-MM-DD)"),
+    started_at_time: z.string().optional().describe("Startzeit (HH:MM)"),
+    ended_at_time: z.string().optional().describe("Endzeit (HH:MM)"),
+    duration: z.number().optional().describe("Dauer in Minuten"),
+    task_id: z.number().optional().describe("Aufgaben-ID"),
+    project_id: z.number().optional().describe("Projekt-ID"),
+    user_id: z.number().optional().describe("Benutzer-ID"),
+    comments: z.string().optional().describe("Beschreibung/Kommentar"),
+    billable: z.boolean().optional().describe("Abrechenbar?"),
+  }).shape;
+
   server.tool(
     "papierkram_create_time_entry",
     "Erstelle einen neuen Zeiteintrag in Papierkram",
-    {
-      entry_date: z.string().describe("Datum (YYYY-MM-DD)"),
-      started_at_time: z.string().optional().describe("Startzeit (HH:MM)"),
-      ended_at_time: z.string().optional().describe("Endzeit (HH:MM)"),
-      duration: z.number().optional().describe("Dauer in Minuten"),
-      task_id: z.number().optional().describe("Aufgaben-ID"),
-      project_id: z.number().optional().describe("Projekt-ID"),
-      user_id: z.number().optional().describe("Benutzer-ID"),
-      comments: z.string().optional().describe("Beschreibung/Kommentar"),
-      billable: z.boolean().optional().describe("Abrechenbar?"),
-    },
+    createTimeEntryShape,
     async ({ task_id, project_id, user_id, ...rest }) => {
       // Papierkram API expects nested objects for task, project, user
       const payload: Record<string, unknown> = { ...rest };
@@ -132,20 +135,27 @@ export function registerTrackerTools(
     }
   );
 
+  const updateTimeEntryShape = z.object({
+    id: z.number().describe("ID des Zeiteintrags"),
+    entry_date: z.string().optional(),
+    started_at_time: z.string().optional(),
+    ended_at_time: z.string().optional(),
+    duration: z.number().optional(),
+    task_id: z.number().optional().describe("Aufgaben-ID"),
+    project_id: z.number().optional().describe("Projekt-ID"),
+    comments: z.string().optional(),
+    billable: z.boolean().optional(),
+  }).shape;
+
   server.tool(
     "papierkram_update_time_entry",
     "Aktualisiere einen Zeiteintrag",
-    {
-      id: z.number().describe("ID des Zeiteintrags"),
-      entry_date: z.string().optional(),
-      started_at_time: z.string().optional(),
-      ended_at_time: z.string().optional(),
-      duration: z.number().optional(),
-      comments: z.string().optional(),
-      billable: z.boolean().optional(),
-    },
-    async ({ id, ...data }) => {
-      const result = await client.updateTimeEntry(id, data);
+    updateTimeEntryShape,
+    async ({ id, task_id, project_id, ...data }) => {
+      const payload: Record<string, unknown> = { ...data };
+      if (task_id !== undefined) payload.task = { id: task_id };
+      if (project_id !== undefined) payload.project = { id: project_id };
+      const result = await client.updateTimeEntry(id, payload);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
       };
