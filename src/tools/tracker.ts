@@ -119,8 +119,13 @@ export function registerTrackerTools(
       comments: z.string().optional().describe("Beschreibung/Kommentar"),
       billable: z.boolean().optional().describe("Abrechenbar?"),
     },
-    async (params) => {
-      const result = await client.createTimeEntry(params);
+    async ({ task_id, project_id, user_id, ...rest }) => {
+      // Papierkram API expects nested objects for task, project, user
+      const payload: Record<string, unknown> = { ...rest };
+      if (task_id !== undefined) payload.task = { id: task_id };
+      if (project_id !== undefined) payload.project = { id: project_id };
+      if (user_id !== undefined) payload.user = { id: user_id };
+      const result = await client.createTimeEntry(payload);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
       };
