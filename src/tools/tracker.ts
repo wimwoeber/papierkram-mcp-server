@@ -42,8 +42,12 @@ export function registerTrackerTools(
       relative_costs: z.number().optional().describe("Kosten"),
       user_id: z.number().optional().describe("Zugewiesener Benutzer"),
     },
-    async (params) => {
-      const result = await client.createTask(params);
+    async ({ project_id, proposition_id, user_id, ...rest }) => {
+      const payload: Record<string, unknown> = { ...rest };
+      if (project_id !== undefined) payload.project = { id: project_id };
+      if (proposition_id !== undefined) payload.proposition = { id: proposition_id };
+      if (user_id !== undefined) payload.user = { id: user_id };
+      const result = await client.createTask(payload);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
       };
@@ -60,8 +64,10 @@ export function registerTrackerTools(
       deadline: z.string().optional(),
       relative_costs: z.number().optional(),
     },
-    async ({ id, ...data }) => {
-      const result = await client.updateTask(id, data);
+    async ({ id, project_id, ...rest }) => {
+      const payload: Record<string, unknown> = { ...rest };
+      if (project_id !== undefined) payload.project = { id: project_id };
+      const result = await client.updateTask(id, payload);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
       };
